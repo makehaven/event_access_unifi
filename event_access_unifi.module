@@ -1,0 +1,117 @@
+<?php
+
+use Drupal\Core\Url;
+
+/**
+ * Implements hook_civicrm_post().
+ * Creates a UniFi visitor pass for a Registered participant and stores it.
+ */
+function event_access_unifi_civicrm_post($op, $objectName, $objectId, &$objectRef) {
+  if (!function_exists('civicrm_initialize')) {
+    return;
+  }
+  if (!in_array($op, ['create', 'edit'], TRUE) || $objectName !== 'Participant') {
+    return;
+  }
+  try {
+    civicrm_initialize();
+
+    $participant = \Civi\Api3\Participant::getsingle(['id' => $objectId]);
+    if (empty($participant['event_id']) || empty($participant['contact_id']) || empty($participant['status_id'])) {
+      return;
+    }
+
+    $status = \Civi\Api3\ParticipantStatusType::getsingle(['id' => $participant['status_id']]);
+    if (!empty($status['is_cancelled']) || (!empty($status['class']) && strtolower($status['class']) === 'negative')) {
+      return;
+    }
+
+    // If your site uses a specific status for Registered, adjust as needed.
+    // We proceed for any non-cancelled statuses for simplicity.
+    $event = \Civi\Api3\Event::getsingle(['id' => $participant['event_id']]);
+    $contact = \Civi\Api3\Contact::getsingle(['id' => $participant['contact_id']]);
+
+    $start = strtotime($event['start_date'] ?? '');
+    if (!$start) return;
+
+    $cfg = \Drupal::config('event_access_unifi.settings');
+    $offset_before = (int) ($cfg->get('offset_before_start_minutes') ?? 60);
+    $window_from_start = (int) ($cfg->get('window_from_start_minutes') ?? 180);
+
+    $valid_from_s = $start - ($offset_before * 60);
+    $valid_to_s   = $start + ($window_from_start * 60);
+
+    $name = trim(sprintf('%s %s', $contact['first_name'] ?? '', $contact['last_name'] ?? '')) ?: ($contact['display_name'] ?? 'Visitor');
+
+    $email = '';
+    if (!empty($contact['email'])) {
+      $email = is_array($contact['email']) ? ($contact['email'][0] ?? '') : $contact['email'];
+    }
+
+    /** @var \Drupal\event_access_unifi\Service\EventAccessManager $mgr */
+    $mgr = \Drupal::service('event_access_unifi.manager');
+    $participantId = (int) $objectId;
+    $existing = $mgr->loadPassForParticipant($participantId);
+
+    $createdNewVisitor = FALSE;
+    if ($existing && !empty($existing['visitor_id'])) {
+      $visitor = [
+        'visitor_id' => $existing['visitor_id'],
+        'qr_url' => $existing['qr_url'],
+        'pin' => $existing['pin'],
+      ];
+    }
+    else {
+      $visitor = $mgr->createVisitor($name, $email ?: NULL, $valid_from_s, $valid_to_s);
+      if (!$visitor) {
+        return;
+      }
+      $createdNewVisitor = TRUE;
+    }
+
+    $rec = $mgr->upsertPass(
+      $participantId,
+      (int) $participant['contact_id'],
+      (string) ($email ?: ''),
+      (int) $participant['event_id'],
+      $visitor,
+      $valid_from_s,
+      $valid_to_s,
+      $existing
+    );
+
+    // Send email
+    $subject_tpl = (string) $cfg->get('email_subject');
+    $body_tpl = (string) $cfg->get('email_body');
+    $passUrl = Url::fromRoute('event_access_unifi.pass_token', [
+      'participant_id' => $participantId,
+      'hash' => $rec['token_hash'],
+    ], ['absolute' => TRUE])->toString();
+
+    $tokens = [
+      '{{ name }}' => $name,
+      '{{ event_title }}' => (string) ($event['title'] ?? 'your event'),
+      '{{ qrUrl }}' => (string) ($visitor['qr_url'] ?? ''),
+      '{{ pin }}' => (string) ($visitor['pin'] ?? ''),
+      '{{ valid_from_human }}' => date('Y-m-d H:i', $valid_from_s),
+      '{{ valid_to_human }}' => date('Y-m-d H:i', $valid_to_s),
+      '{{ pass_link }}' => $passUrl,
+    ];
+    $subject = strtr($subject_tpl, $tokens);
+    $body = strtr($body_tpl, $tokens);
+
+    $windowChanged = $existing && (($existing['valid_from'] ?? 0) != $rec['valid_from'] || ($existing['valid_to'] ?? 0) != $rec['valid_to']);
+    $shouldEmail = !empty($email) && ($createdNewVisitor || !$existing || $existing['email'] !== $rec['email'] || $windowChanged);
+
+    if ($shouldEmail) {
+      $mailManager = \Drupal::service('plugin.manager.mail');
+      $langcode = \Drupal::languageManager()->getDefaultLanguage()->getId();
+      $params = ['subject' => $subject, 'message' => $body];
+      $from = (string) \Drupal::config('event_access_unifi.settings')->get('email_sender') ?: NULL;
+      $mailManager->mail('event_access_unifi', 'visitor', $email, $langcode, $params, $from);
+    }
+  }
+  catch (\Throwable $e) {
+    \Drupal::logger('event_access_unifi')->error('Civi visitor create error: @m', ['@m' => $e->getMessage()]);
+  }
+}

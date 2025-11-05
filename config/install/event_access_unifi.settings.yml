@@ -1,0 +1,26 @@
+api_host: ''
+api_token: ''
+verify_ssl: false
+visitor_default_door_ids: []
+offset_before_start_minutes: 60
+window_from_start_minutes: 180
+email_sender: ''
+email_subject: 'Your event access for {{ event_title }}'
+email_body: |
+  Hello {{ name }},
+
+  Your access pass for {{ event_title }} is ready.
+  {% if qrUrl %}QR Code: {{ qrUrl }}{% endif %}
+  {% if pin %}
+  PIN: {{ pin }}
+  {% endif %}
+
+  Valid window:
+  From: {{ valid_from_human }}
+  To:   {{ valid_to_human }}
+
+  You can also open your pass here:
+  {{ pass_link }}
+
+  Thanks,
+  MakeHaven

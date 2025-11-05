@@ -1,0 +1,13 @@
+services:
+  logger.channel.event_access_unifi:
+    class: Drupal\Core\Logger\LoggerChannel
+    factory: ['@logger.factory', 'get']
+    arguments: ['event_access_unifi']
+
+  event_access_unifi.api:
+    class: 'Drupal\event_access_unifi\Service\UnifiApiService'
+    arguments: ['@http_client', '@config.factory', '@logger.channel.event_access_unifi']
+
+  event_access_unifi.manager:
+    class: 'Drupal\event_access_unifi\Service\EventAccessManager'
+    arguments: ['@database', '@config.factory', '@event_access_unifi.api', '@logger.channel.event_access_unifi']

@@ -1,0 +1,8 @@
+name: 'Event Access (UniFi Visitors)'
+type: module
+description: 'Creates UniFi visitor passes (QR/PIN) for CiviCRM event registrants and shows them in Drupal.'
+core_version_requirement: '^10 || ^11'
+package: 'MakeHaven'
+dependencies:
+  - drupal:system
+  - drupal:user

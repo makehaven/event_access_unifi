@@ -1,0 +1,36 @@
+<?php
+
+/**
+ * @file
+ * Install, update and uninstall functions for the module.
+ */
+
+/**
+ * Implements hook_schema().
+ */
+function event_access_unifi_schema() {
+  $schema['event_access_unifi_pass'] = [
+    'description' => 'Stores UniFi visitor pass details keyed by CiviCRM participant.',
+    'fields' => [
+      'participant_id' => ['type' => 'int', 'not null' => TRUE],
+      'contact_id' => ['type' => 'int', 'not null' => TRUE, 'default' => 0],
+      'email' => ['type' => 'varchar', 'length' => 255, 'not null' => TRUE, 'default' => ''],
+      'event_id' => ['type' => 'int', 'not null' => TRUE, 'default' => 0],
+      'visitor_id' => ['type' => 'varchar', 'length' => 128, 'not null' => FALSE],
+      'qr_url' => ['type' => 'varchar', 'length' => 512, 'not null' => FALSE],
+      'pin' => ['type' => 'varchar', 'length' => 32, 'not null' => FALSE],
+      'valid_from' => ['type' => 'int', 'not null' => TRUE, 'default' => 0],
+      'valid_to' => ['type' => 'int', 'not null' => TRUE, 'default' => 0],
+      'token_hash' => ['type' => 'varchar', 'length' => 64, 'not null' => TRUE],
+      'created' => ['type' => 'int', 'not null' => TRUE, 'default' => 0],
+      'changed' => ['type' => 'int', 'not null' => TRUE, 'default' => 0],
+    ],
+    'primary key' => ['participant_id'],
+    'indexes' => [
+      'email' => ['email'],
+      'event_id' => ['event_id'],
+      'contact_id' => ['contact_id'],
+    ],
+  ];
+  return $schema;
+}

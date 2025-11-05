@@ -1,0 +1,6 @@
+administer event access unifi settings:
+  title: 'Administer Event Access (UniFi) settings'
+  description: 'Configure UniFi API and event access behavior.'
+view own event access passes:
+  title: 'View own event access passes'
+  description: 'Allows users to open /event-access/my-passes.'

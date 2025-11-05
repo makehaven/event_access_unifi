@@ -1,0 +1,25 @@
+event_access_unifi.settings:
+  path: '/admin/config/system/event-access-unifi'
+  defaults:
+    _form: '\Drupal\event_access_unifi\Form\EventAccessSettingsForm'
+    _title: 'Event Access (UniFi)'
+  requirements:
+    _permission: 'administer event access unifi settings'
+
+event_access_unifi.my_passes:
+  path: '/event-access/my-passes'
+  defaults:
+    _controller: '\Drupal\event_access_unifi\Controller\MyPassesController::list'
+    _title: 'My Event Access Passes'
+  requirements:
+    _permission: 'view own event access passes'
+
+event_access_unifi.pass_token:
+  path: '/event-access/pass/{participant_id}/{hash}'
+  defaults:
+    _controller: '\Drupal\event_access_unifi\Controller\TokenController::view'
+    _title: 'Event Access Pass'
+  requirements:
+    _access: 'TRUE'
+  options:
+    no_cache: 'TRUE'
