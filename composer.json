@@ -1,0 +1,6 @@
+{
+    "name": "makehaven/event_access_unifi",
+    "type": "drupal-custom-module",
+    "description": "Issues UniFi visitor passes for CiviCRM event participants and exposes retrieval pages.",
+    "license": "GPL-2.0-or-later"
+}
